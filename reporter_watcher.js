@@ -10,32 +10,24 @@ username   = process.argv[3];
 auth_token = process.argv[4];
 
 function do_it_all(path) {
-  console.log(path);
-  get_md5sum_from_filename(path);
+  var data = JSON.parse(fs.readFileSync(path, 'utf8'));
+  update_beeminder(data['snapshots'].length);
 }
 
-function get_md5sum_from_filename(filename) {
-  exec("md5 -q " + filename, function (error, stdout, stderr) {
+function update_beeminder(value) {
+  console.log("about to update beeminder with value: " + value)
+  var req = request.post('https://www.beeminder.com/api/v1/users/' + username +
+                           '/goals/reporter/datapoints.json?auth_token=' + auth_token +
+                           '&value=' + value +
+                           '&timestamp=' + ((new Date()).getTime()/1000) +
+                           '&comment=reporter_watcher',
+                         function (error, response, body) {
     if (!error) {
-      update_beeminder(stdout);
+      console.log('sent update ' + value);
+      console.log('response was ' + response.body);
     }
     else {
-      console.log(
-        "some shit went down getting the md5sum of the file. here's stderr:\n" +
-        stderr);
-    }
-  });
-}
-
-function update_beeminder(md5sum) {
-  console.log("about to update beeminder with request: " + md5sum)
-  var req = request.post('https://www.beeminder.com/api/v1/users/' + username + '/goals/reporter/datapoints.json?auth_token=' + auth_token + '&value=1&requestid=' + md5sum + "&comment=node", function (error, response, body) {
-    if (!error) {
-      console.log('sent update ' + md5sum);
-      console.log('response was' + response.body);
-    }
-    else {
-      console.log('update ' + md5sum + 'was rejected!');
+      console.log('update ' + value + ' was rejected!');
     }
   });
   maintain_file_watcher();
@@ -89,9 +81,3 @@ function maintain_file_watcher() {
 }
 
 maintain_file_watcher()
-
-// functions needed:
-// 1. one to find the most recently updated file (in case filename is not set!)
-// 2. another to grab the md5sum
-// 3. a third to send that request off to beeminder
-// 4. a final one to wrap all that logic up.
