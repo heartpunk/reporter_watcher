@@ -10,6 +10,7 @@ username   = process.argv[3];
 auth_token = process.argv[4];
 
 function do_it_all(path) {
+  console.log("doing it all");
   var data = JSON.parse(fs.readFileSync(path, 'utf8'));
   update_beeminder(data['snapshots'].length);
 }
@@ -52,32 +53,42 @@ function deactivate_watcher() {
 }
 
 function clear_watcher_and_interval() {
-    if (watcher) { deactivate_watcher() };
-    if (interval) { deactivate_interval() };
+  console.log("clearing watcher and interval");
+  if (watcher) { deactivate_watcher() };
+  if (interval) { deactivate_interval() };
 }
 
 function activate_interval() {
   clear_watcher_and_interval();
+  console.log("setting up an interval to periodically check if today's file has been created.")
   interval = setInterval(maintain_file_watcher, 60*1000*5);
 }
 
 function activate_watcher(path) {
+  console.log("setting up the watcher for path=" + path);
   watcher = fs.watch(path, function(event, filename) {
     clear_watcher_and_interval();
     do_it_all(path);
   });
   var offset = (moment().add('d', 1) - moment()) + 10000;
+  console.log("we'll switch over to the next day's file in " + offset + " seconds");
   // we add ten seconds to the interval just to give a little extra room.
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
 }
 
 function maintain_file_watcher() {
   var this_moments_file_path = cur_file_path(date_string(new Date()));
+  console.log("the current file path is " + this_moments_file_path);
 
-  if ( fs.statSync(this_moments_file_path).isFile() ) {
+  if ( fs.existsSync(this_moments_file_path) && fs.statSync(this_moments_file_path).isFile() ) {
+    console.log("there is a file at the current file path");
     activate_watcher(this_moments_file_path);
   }
-  else { activate_interval(maintain_file_watcher); }
+  else {
+    console.log("no file at the current file path yet, keep waiting.");
+    activate_interval(maintain_file_watcher);
+  }
 }
 
-maintain_file_watcher()
+console.log("\n\nstarting up!");
+maintain_file_watcher();
