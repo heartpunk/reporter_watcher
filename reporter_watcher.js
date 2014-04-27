@@ -9,10 +9,18 @@ the_dir    = process.argv[2];
 username   = process.argv[3];
 auth_token = process.argv[4];
 
+function daily_reporter_data_to_update_value(data) {
+  return data['snapshots'].length;
+}
+
 function do_it_all(path) {
   console.log("doing it all");
-  var data = JSON.parse(fs.readFileSync(path, 'utf8'));
-  update_beeminder(data['snapshots'].length);
+
+  update_beeminder(
+    daily_reporter_data_to_update_value(
+      JSON.parse(fs.readFileSync(path, 'utf8'))
+    )
+  );
 }
 
 function update_beeminder(value) {
@@ -70,21 +78,47 @@ function activate_watcher(path) {
     clear_watcher_and_interval();
     do_it_all(path);
   });
-  var offset = (moment().startOf('day').add('day', 1) - moment()) + 10000;
-  console.log("we'll switch over to the next day's file in " + offset + " seconds");
+}
+
+function time_to_midnight(current_time) {
+  return (moment(current_time).startOf('day').add('day', 1) - current_time) + 10000;
   // we add ten seconds to the interval just to give a little extra room.
+}
+
+function setup_midnight_switchover_interval() {
+  var offset = time_to_midnight(new Date());
+  console.log("we'll switch over to the next day's file in approximately " +
+              (offset/1000) + " seconds");
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
+}
+
+function file_watcher_maintenance_logic(current_file_path, file_exists) {
+  if (file_exists) {
+    return {
+      'type':'watch',
+      'path': current_file_path
+    };
+  }
+  else {
+    return {
+      'type': 'wait'
+    };
+  }
 }
 
 function maintain_file_watcher() {
   var this_moments_file_path = cur_file_path(date_string(new Date()));
   console.log("the current file path is " + this_moments_file_path);
+  var file_exists = fs.existsSync(this_moments_file_path) && fs.statSync(this_moments_file_path).isFile();
 
-  if ( fs.existsSync(this_moments_file_path) && fs.statSync(this_moments_file_path).isFile() ) {
+  var command = file_watcher_maintenance_logic(this_moments_file_path, file_exists);
+
+  if ( command['type'] == 'watch' ) {
     console.log("there is a file at the current file path");
-    activate_watcher(this_moments_file_path);
+    activate_watcher(command['path']);
+    setup_midnight_switchover_interval();
   }
-  else {
+  else if (command['type'] == 'wait') {
     console.log("no file at the current file path yet, keep waiting.");
     activate_interval(maintain_file_watcher);
   }
