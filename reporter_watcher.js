@@ -70,7 +70,7 @@ function activate_watcher(path) {
     clear_watcher_and_interval();
     do_it_all(path);
   });
-  var offset = (moment().add('d', 1) - moment()) + 10000;
+  var offset = (moment().startOf('day').add('day', 1) - moment()) + 10000;
   console.log("we'll switch over to the next day's file in " + offset + " seconds");
   // we add ten seconds to the interval just to give a little extra room.
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
