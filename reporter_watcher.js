@@ -97,7 +97,7 @@ function setup_midnight_switchover_interval() {
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
 }
 
-function file_watcher_maintenance_logic(current_file_path, file_exists) {
+function file_watcher_maintenance_logic(current_file_path, file_exists, interval) {
   if (file_exists) {
     return {
       'type':'watch',
@@ -105,9 +105,16 @@ function file_watcher_maintenance_logic(current_file_path, file_exists) {
     };
   }
   else {
-    return {
-      'type': 'wait'
-    };
+    if (interval) {
+      return {
+        'type': 'pass'
+      }
+    }
+    else {
+      return {
+        'type': 'wait'
+      };
+    }
   }
 }
 
@@ -116,7 +123,7 @@ function maintain_file_watcher() {
   log("the current file path is " + this_moments_file_path);
   var file_exists = fs.existsSync(this_moments_file_path) && fs.statSync(this_moments_file_path).isFile();
 
-  var command = file_watcher_maintenance_logic(this_moments_file_path, file_exists);
+  var command = file_watcher_maintenance_logic(this_moments_file_path, file_exists, day_switch_interval);
 
   if ( command['type'] == 'watch' ) {
     log("there is a file at the current file path");
