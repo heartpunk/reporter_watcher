@@ -9,12 +9,16 @@ the_dir    = process.argv[2];
 username   = process.argv[3];
 auth_token = process.argv[4];
 
+function log(message) {
+  console.log(moment().format() + ' ' + message)
+}
+
 function daily_reporter_data_to_update_value(data) {
   return data['snapshots'].length;
 }
 
 function do_it_all(path) {
-  console.log("doing it all");
+  log("doing it all");
 
   update_beeminder(
     daily_reporter_data_to_update_value(
@@ -24,7 +28,7 @@ function do_it_all(path) {
 }
 
 function update_beeminder(value) {
-  console.log("about to update beeminder with value: " + value)
+  log("about to update beeminder with value: " + value)
   var req = request.post('https://www.beeminder.com/api/v1/users/' + username +
                            '/goals/reporter/datapoints.json?auth_token=' + auth_token +
                            '&value=' + value +
@@ -32,11 +36,11 @@ function update_beeminder(value) {
                            '&comment=reporter_watcher',
                          function (error, response, body) {
     if (!error) {
-      console.log('sent update ' + value);
-      console.log('response was ' + response.body);
+      log('sent update ' + value);
+      log('response was ' + response.body);
     }
     else {
-      console.log('update ' + value + ' was rejected!');
+      log('update ' + value + ' was rejected!');
     }
   });
   maintain_file_watcher();
@@ -61,19 +65,19 @@ function deactivate_watcher() {
 }
 
 function clear_watcher_and_interval() {
-  console.log("clearing watcher and interval");
+  log("clearing watcher and interval");
   if (watcher) { deactivate_watcher() };
   if (interval) { deactivate_interval() };
 }
 
 function activate_interval() {
   clear_watcher_and_interval();
-  console.log("setting up an interval to periodically check if today's file has been created.")
+  log("setting up an interval to periodically check if today's file has been created.")
   interval = setInterval(maintain_file_watcher, 60*1000*5);
 }
 
 function activate_watcher(path) {
-  console.log("setting up the watcher for path=" + path);
+  log("setting up the watcher for path=" + path);
   watcher = fs.watch(path, function(event, filename) {
     clear_watcher_and_interval();
     do_it_all(path);
@@ -87,7 +91,7 @@ function time_to_midnight(current_time) {
 
 function setup_midnight_switchover_interval() {
   var offset = time_to_midnight(new Date());
-  console.log("we'll switch over to the next day's file in approximately " +
+  log("we'll switch over to the next day's file in approximately " +
               (offset/1000) + " seconds");
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
 }
@@ -108,21 +112,21 @@ function file_watcher_maintenance_logic(current_file_path, file_exists) {
 
 function maintain_file_watcher() {
   var this_moments_file_path = cur_file_path(date_string(new Date()));
-  console.log("the current file path is " + this_moments_file_path);
+  log("the current file path is " + this_moments_file_path);
   var file_exists = fs.existsSync(this_moments_file_path) && fs.statSync(this_moments_file_path).isFile();
 
   var command = file_watcher_maintenance_logic(this_moments_file_path, file_exists);
 
   if ( command['type'] == 'watch' ) {
-    console.log("there is a file at the current file path");
+    log("there is a file at the current file path");
     activate_watcher(command['path']);
     setup_midnight_switchover_interval();
   }
   else if (command['type'] == 'wait') {
-    console.log("no file at the current file path yet, keep waiting.");
+    log("no file at the current file path yet, keep waiting.");
     activate_interval(maintain_file_watcher);
   }
 }
 
-console.log("\n\nstarting up!");
+log("starting up!");
 maintain_file_watcher();
