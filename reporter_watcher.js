@@ -93,6 +93,7 @@ function setup_midnight_switchover_interval() {
   var offset = time_to_midnight(new Date());
   log("we'll switch over to the next day's file in approximately " +
               (offset/1000) + " seconds");
+  clearTimeout(day_switch_interval);
   day_switch_interval = setTimeout(maintain_file_watcher, offset);
 }
 
